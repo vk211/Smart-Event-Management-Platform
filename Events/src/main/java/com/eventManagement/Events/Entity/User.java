@@ -1,6 +1,9 @@
 package com.eventManagement.Events.Entity;
 
+import com.eventManagement.Events.Utills.Role;
 import jakarta.persistence.*;
+
+import java.util.Set;
 
 @Entity
 @Table(name = "users") // ✅ avoids reserved keyword conflict
@@ -19,6 +22,9 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
+    private Set<Role> roles; // ADMIN, ORGANISER, ATTENDEE
     // --- Constructors ---
     public User() {}
 

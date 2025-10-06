@@ -10,13 +10,9 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtil {
-
-    // 1) use a sufficiently strong secret key (store in env var or secrets manager)
     private final Key key = Keys.hmacShaKeyFor(
-            // example 64-byte key; in prod load from env var
             "replace_this_with_a_very_long_random_secret_key_at_least_512_bits_long!".getBytes()
     );
-
     private final long jwtExpirationMs = 1000 * 60 * 60 * 8; // 8 hours
 
     public String generateToken(String username) {
