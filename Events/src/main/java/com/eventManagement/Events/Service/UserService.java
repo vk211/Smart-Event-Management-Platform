@@ -1,21 +1,24 @@
 package com.eventManagement.Events.Service;
 
-//package com.example.events.service;
-
 import com.eventManagement.Events.Entity.User;
 import com.eventManagement.Events.Repository.UserRepository;
+import com.eventManagement.Events.Utills.Role;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> getAllUsers() {
@@ -30,6 +33,18 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
+
+        // ✅ Encode password
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        // ✅ Ensure default role
+        Set<Role> roles = user.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            roles = new HashSet<>();
+            roles.add(Role.ATTENDEE);
+            user.setRoles(roles);
+        }
+
         return userRepository.save(user);
     }
 
@@ -38,7 +53,7 @@ public class UserService {
                 .map(existing -> {
                     existing.setName(updatedUser.getName());
                     existing.setEmail(updatedUser.getEmail());
-                    existing.setPassword(updatedUser.getPassword());
+                    existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
                     return userRepository.save(existing);
                 })
                 .orElseThrow(() -> new RuntimeException("User not found"));

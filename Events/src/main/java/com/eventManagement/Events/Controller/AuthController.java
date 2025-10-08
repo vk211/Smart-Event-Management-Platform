@@ -1,9 +1,5 @@
 package com.eventManagement.Events.Controller;
 
-//public class AuthController {
-//}
-//package com.example.events.controller;
-
 import com.eventManagement.Events.Entity.User;
 import com.eventManagement.Events.Repository.UserRepository;
 import com.eventManagement.Events.Utills.JwtUtil;
@@ -17,6 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -40,12 +37,14 @@ public class AuthController {
         String email = body.get("email");
         String rawPassword = body.get("password");
 
-        if (userRepository.existsByEmail(email)) return ResponseEntity.badRequest().body("Email exists");
+        if (userRepository.existsByEmail(email))
+            return ResponseEntity.badRequest().body("Email already exists");
 
         String hashed = passwordEncoder.encode(rawPassword);
         User user = new User(name, email, hashed);
         userRepository.save(user);
-        return ResponseEntity.ok("Registered");
+
+        return ResponseEntity.ok("Registered successfully");
     }
 
     @PostMapping("/login")
@@ -53,11 +52,22 @@ public class AuthController {
         String email = body.get("email");
         String password = body.get("password");
 
-        // Authenticate using AuthenticationManager (will use CustomUserDetailsService + PasswordEncoder)
+        // Authenticate user
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
 
-        // If no exception, successful authentication
-        final String token = jwtUtil.generateToken(email);
-        return ResponseEntity.ok(Map.of("token", token));
+        // Fetch the user entity
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ✅ Use getPrimaryRole() to get a single role
+        String role = user.getPrimaryRole().name();
+
+        // ✅ Include role inside the token
+        final String token = jwtUtil.generateToken(email, role);
+
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "role", role
+        ));
     }
 }

@@ -6,21 +6,26 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
 public class JwtUtil {
+
     private final Key key = Keys.hmacShaKeyFor(
             "replace_this_with_a_very_long_random_secret_key_at_least_512_bits_long!".getBytes()
     );
+
     private final long jwtExpirationMs = 1000 * 60 * 60 * 8; // 8 hours
 
-    public String generateToken(String username) {
+    // ✅ Generate token with role claim
+    public String generateToken(String username, String role) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + jwtExpirationMs);
 
         return Jwts.builder()
                 .setSubject(username)
+                .addClaims(Map.of("role", role))
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(key, SignatureAlgorithm.HS512)
@@ -40,13 +45,26 @@ public class JwtUtil {
         return extractClaim(token, Claims::getSubject);
     }
 
+    // ✅ Extract role claim
+    public String extractRole(String token) {
+        return extractAllClaims(token).get("role", String.class);
+    }
+
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        final Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        final Claims claims = extractAllClaims(token);
         return resolver.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     private boolean isTokenExpired(String token) {
