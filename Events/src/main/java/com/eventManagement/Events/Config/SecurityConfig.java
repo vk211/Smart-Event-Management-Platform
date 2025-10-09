@@ -51,14 +51,15 @@ public class SecurityConfig {
                 .cors(cors -> {}) // Enable CORS
                 .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // login/register
-                        .requestMatchers("/h2-console/**").permitAll() // h2 console
-                        .requestMatchers("/api/events/create").hasAnyRole("ADMIN", "ORGANISER") // create event
-                        .requestMatchers("/api/events/**").hasAnyRole("ADMIN", "ORGANISER", "ATTENDEE") // get events
-                        .requestMatchers("/api/tickets/**").hasRole("ATTENDEE") // purchase tickets
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin-only
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/api/events", "/api/events/{id}").permitAll() // 👈 public
+                        .requestMatchers("/api/events/create").hasAnyRole("ADMIN", "ORGANISER")
+                        .requestMatchers("/api/tickets/**").hasRole("ATTENDEE")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
+
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .addFilterBefore(new JwtAuthFilter(jwtUtil, userDetailsService), UsernamePasswordAuthenticationFilter.class);
 
