@@ -16,7 +16,7 @@ public class JwtUtil {
             "replace_this_with_a_very_long_random_secret_key_at_least_512_bits_long!".getBytes()
     );
 
-    private final long jwtExpirationMs = 1000 * 60 * 60 * 8; // 8 hours
+    private final long jwtExpirationMs = 1000 * 60  * 8; // 8 min
 
     // ✅ Generate token with role claim
     public String generateToken(String username, String role) {

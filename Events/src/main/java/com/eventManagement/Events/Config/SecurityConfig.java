@@ -27,14 +27,14 @@ public class SecurityConfig {
         this.jwtUtil = jwtUtil;
     }
 
-    // ✅ CORS Configuration
+    // ✅ Global CORS configuration for port 5173
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173")
+                        .allowedOrigins("http://localhost:5173") // <-- match your React frontend port
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);
@@ -48,20 +48,21 @@ public class SecurityConfig {
         JwtAuthFilter jwtFilter = new JwtAuthFilter(jwtUtil, userDetailsService);
 
         http
-                .cors(cors -> {}) // Enable CORS
-                .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
+                .cors(cors -> {}) // use global CORS config
+                .csrf(csrf -> csrf.disable()) // disable CSRF for REST APIs
+                .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/events", "/api/events/{id}").permitAll() // 👈 public
-                        .requestMatchers("/api/events/create").hasAnyRole("ADMIN", "ORGANISER")
+                        .requestMatchers("/api/events/**").permitAll()
+                        .requestMatchers("/api/eventcards/**").permitAll() // ✅ all methods allowed
+                        .requestMatchers("/api/events/create").hasAnyRole("ADMIN", "ORGANIZER")
                         .requestMatchers("/api/tickets/**").hasRole("ATTENDEE")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
-                .addFilterBefore(new JwtAuthFilter(jwtUtil, userDetailsService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

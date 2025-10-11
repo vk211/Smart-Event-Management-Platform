@@ -1,7 +1,3 @@
-//package com.eventManagement.Events.Repository;
-//
-//public class EventRepository {
-//}
 package com.eventManagement.Events.Repository;
 
 import com.eventManagement.Events.Entity.Event;

@@ -3,13 +3,16 @@ package com.eventManagement.Events.Controller;
 import com.eventManagement.Events.Entity.User;
 import com.eventManagement.Events.Repository.UserRepository;
 import com.eventManagement.Events.Utills.JwtUtil;
+import com.eventManagement.Events.Utills.Role;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -36,12 +39,47 @@ public class AuthController {
         String name = body.get("name");
         String email = body.get("email");
         String rawPassword = body.get("password");
+        String phone = body.get("phone");
+        String roleStr = body.get("role");
+        String organization = body.get("organization");
+        String profilePic = body.get("profilePic"); // optional URL (frontend can send null or empty)
 
-        if (userRepository.existsByEmail(email))
+        if (userRepository.existsByEmail(email)) {
             return ResponseEntity.badRequest().body("Email already exists");
+        }
 
-        String hashed = passwordEncoder.encode(rawPassword);
-        User user = new User(name, email, hashed);
+        // Encode password
+        String hashedPassword = passwordEncoder.encode(rawPassword);
+
+        // Create user
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(hashedPassword);
+        user.setPhone(phone);
+
+        // Assign role properly
+        Set<Role> roles = new HashSet<>();
+        try {
+            roles.add(Role.valueOf(roleStr.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid role: " + roleStr);
+        }
+        user.setRoles(roles);
+
+        // Set organizer or attendee-specific fields
+        if (roles.contains(Role.ORGANIZER)) {
+            user.setOrganization(organization);
+        } else {
+            user.setOrganization(null);
+        }
+
+        if (roles.contains(Role.ATTENDEE) && profilePic != null && !profilePic.isEmpty()) {
+            user.setProfilePic(profilePic);
+        } else {
+            user.setProfilePic(null);
+        }
+
         userRepository.save(user);
 
         return ResponseEntity.ok("Registered successfully");
