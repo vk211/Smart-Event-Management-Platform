@@ -1,4 +1,7 @@
-import React, { useState, type ChangeEvent, type FormEvent } from "react";
+import React, { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerUser, loginUser, saveToken, isTokenValid } from "./helper";
+
 import {
   Tabs,
   Tab,
@@ -27,6 +30,7 @@ interface FormData {
 
 const AuthPage: React.FC = () => {
   const [tab, setTab] = useState<number>(0); // 0 = Login, 1 = Register
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -39,6 +43,39 @@ const AuthPage: React.FC = () => {
     profilePic: null,
   });
 
+  const navigate = useNavigate();
+
+  // Check if user is already logged in and redirect them
+  useEffect(() => {
+    const checkAuth = () => {
+      if (isTokenValid()) {
+        // User is already authenticated with a valid token, redirect to home page
+        navigate("/", { replace: true });
+      } else {
+        // User is not authenticated, show the auth form
+        setIsLoading(false);
+      }
+    };
+
+    // Add a small delay to prevent immediate redirects during route changes
+    const timeoutId = setTimeout(checkAuth, 100);
+    return () => clearTimeout(timeoutId);
+  }, [navigate]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-100 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <Typography variant="body1" className="text-gray-600">
+            Checking authentication...
+          </Typography>
+        </div>
+      </div>
+    );
+  }
+
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value, files } = e.target;
     setFormData((prev) => ({
@@ -47,10 +84,55 @@ const AuthPage: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Form Submitted:", formData);
-    // TODO: Integrate with backend API (login/register)
+
+    try {
+      if (tab === 1) {
+        // ✅ Registration mode
+        if (formData.password !== formData.confirmPassword) {
+          alert("Passwords do not match!");
+          return;
+        }
+
+        const payload = {
+          name: formData.firstName + " " + formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          role: formData.role,
+        };
+
+        await registerUser(payload);
+        alert("Registration successful — please login");
+        setTab(0); // switch to login
+      } else {
+        // ✅ Login mode
+        console.log("Attempting login with:", { email: formData.email });
+        const payload = { email: formData.email, password: formData.password };
+        const data = await loginUser(payload);
+
+        console.log("Login response:", data);
+
+        if (data && data.token) {
+          console.log("Token received, saving...");
+          saveToken(data.token);
+          // Save userId if provided in the response
+          if (data.userId) {
+            localStorage.setItem("userId", data.userId);
+            console.log("UserId saved:", data.userId);
+          }
+          console.log("Navigating to home page...");
+          alert("Login successful!");
+          navigate("/", { replace: true }); // ✅ redirect to home page after login
+        } else {
+          console.log("Login failed - no token in response");
+          alert("Invalid credentials");
+        }
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
   };
 
   return (

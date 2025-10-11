@@ -1,46 +1,82 @@
-import React, { useState } from 'react'
-import { Tabs, Tab, Box, AppBar } from '@mui/material'
-import AuthPage from './Components/Authentication/Auth'
-import EventForm from './Components/EventCreation/EventForm'
-import HomePage from './Components/HomePage/Home'
-import Dashboard from './Components/Dashboard/Dashboard'
-import TicketPurchasePage from './Components/PurchasePage/PurchasePage'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import AuthPage from "./Components/Authentication/Auth";
+import Dashboard from "./Components/Dashboard/Dashboard";
+import HomePage from "./Components/HomePage/Home";
+import EventForm from "./Components/EventCreation/EventForm";
+import ManageEvents from "./Components/ManageEvents/ManageEvents";
+import Header from "./Components/Header";
+import { getToken, getUserRole, isTokenValid } from "./Components/Authentication/helper";
 
 function App() {
-  const [currentTab, setCurrentTab] = useState(0)
-
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue)
-  }
+  const isAuthorized = (allowedRoles?: string[]) => {
+    // Get fresh values on each authorization check
+    const token = getToken();
+    const role = getUserRole();
+    const tokenValid = isTokenValid();
+    
+    console.log("Authorization check:", { token: !!token, role, tokenValid, allowedRoles });
+    
+    if (!token || !tokenValid) {
+      console.log("Authorization failed: No valid token");
+      return false;
+    }
+    
+    if (allowedRoles && !allowedRoles.includes(role || "")) {
+      console.log("Authorization failed: Role not allowed", { role, allowedRoles });
+      return false;
+    }
+    
+    console.log("Authorization successful");
+    return true;
+  };
 
   return (
-    <div className="App">
-      <AppBar position="static" color="primary">
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          centered
-          textColor="inherit"
-          indicatorColor="secondary"
-        >
-          <Tab label="Home" />
-          <Tab label="Dashboard" />
-          <Tab label="Purchase" />
-          <Tab label="Authentication" />
-          <Tab label="Create Event" />
-        </Tabs>
-      </AppBar>
-      
-      <Box sx={{ paddingTop: 0 }}>
-        {currentTab === 0 && <HomePage />}
-        {currentTab === 1 && <Dashboard />}
-        {currentTab === 2 && <TicketPurchasePage />}
-        {currentTab === 3 && <AuthPage />}
-        {currentTab === 4 && <EventForm />}
-      </Box>
-    </div>
-  )
+    <Router>
+      <Header />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<AuthPage />} />
+
+        {/* Protected Routes with role-based access */}
+        <Route
+          path="/dashboard"
+          element={
+            isAuthorized(["ADMIN", "ORGANIZER", "ATTENDEE"]) ? (
+              <Dashboard />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/create-event"
+          element={
+            isAuthorized(["ADMIN", "ORGANIZER"]) ? (
+              <EventForm />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/manage-events"
+          element={
+            isAuthorized(["ADMIN"]) ? (
+              <ManageEvents />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+
+        {/* Default redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

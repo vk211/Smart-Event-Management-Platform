@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h2>Authentication Test</h2>
+    <div id="results"></div>
+    
+    <script>
+        function testAuth() {
+            const token = localStorage.getItem('token');
+            const userId = localStorage.getItem('userId');
+            
+            let role = 'No role';
+            let tokenValid = false;
+            
+            if (token) {
+                try {
+                    if (token.startsWith('mock.')) {
+                        const parts = token.split('.');
+                        if (parts.length === 3) {
+                            const payload = JSON.parse(atob(parts[1]));
+                            role = payload.role;
+                            const currentTime = Date.now() / 1000;
+                            tokenValid = payload.exp > currentTime;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Token parsing error:', e);
+                }
+            }
+            
+            const results = `
+                <p><strong>Token:</strong> ${token ? 'Present' : 'Missing'}</p>
+                <p><strong>Token Valid:</strong> ${tokenValid}</p>
+                <p><strong>User ID:</strong> ${userId || 'Missing'}</p>
+                <p><strong>Role:</strong> ${role}</p>
+                <p><strong>Can Access Create Event:</strong> ${tokenValid && (role === 'ADMIN' || role === 'ORGANIZER')}</p>
+                <p><strong>Can Access Manage Events:</strong> ${tokenValid && role === 'ADMIN'}</p>
+            `;
+            
+            document.getElementById('results').innerHTML = results;
+        }
+        
+        // Run test when page loads
+        testAuth();
+        
+        // Update every 2 seconds to monitor changes
+        setInterval(testAuth, 2000);
+    </script>
+</body>
+</html>
